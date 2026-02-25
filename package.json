@@ -1,0 +1,115 @@
+{
+  "name": "procrasticode",
+  "displayName": "ProcrastiCode",
+  "description": "Your developer break-time companion — jokes, trivia, animal pics, fun facts & news right in VS Code",
+  "version": "0.0.1",
+  "publisher": "samuel",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "procrasticode.openDashboard",
+        "title": "ProcrastiCode: Open Dashboard",
+        "icon": "$(smiley)"
+      },
+      {
+        "command": "procrasticode.randomJoke",
+        "title": "ProcrastiCode: Random Joke"
+      },
+      {
+        "command": "procrasticode.refreshJokes",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "procrasticode.refreshNews",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "procrasticode.refreshYouTube",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "procrasticode",
+          "title": "ProcrastiCode",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "procrasticode": [
+        {
+          "id": "procrasticodeJokes",
+          "name": "Jokes & Facts"
+        },
+        {
+          "id": "procrasticodeNews",
+          "name": "Reddit Feed"
+        },
+        {
+          "id": "procrasticodeYouTube",
+          "name": "YouTube",
+          "type": "webview"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ProcrastiCode",
+      "properties": {
+        "procrasticode.youtubeApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Your YouTube Data API v3 key (free). Get one at https://console.cloud.google.com/apis/credentials — enable 'YouTube Data API v3'."
+        }
+      }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "procrasticode.openDashboard",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "procrasticode.refreshJokes",
+          "when": "view == procrasticodeJokes",
+          "group": "navigation"
+        },
+        {
+          "command": "procrasticode.refreshNews",
+          "when": "view == procrasticodeNews",
+          "group": "navigation"
+        },
+        {
+          "command": "procrasticode.refreshYouTube",
+          "when": "view == procrasticodeYouTube",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^3.0.0"
+  }
+}
