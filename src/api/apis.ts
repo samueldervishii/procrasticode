@@ -17,6 +17,10 @@ function fetchJson(url: string, headers: Record<string, string> = {}): Promise<a
             let data = '';
             res.on('data', (chunk) => (data += chunk));
             res.on('end', () => {
+                if (res.statusCode && res.statusCode >= 400) {
+                    reject(new Error(`HTTP ${res.statusCode} from ${url}`));
+                    return;
+                }
                 try {
                     resolve(JSON.parse(data));
                 } catch {
@@ -91,6 +95,16 @@ export interface YouTubeResult {
     nextPageToken: string;
 }
 
+export interface XkcdComic {
+    num: number;
+    title: string;
+    img: string;
+    alt: string;
+    year: string;
+    month: string;
+    day: string;
+}
+
 export async function getDadJoke(): Promise<Joke> {
     const data = await fetchJson('https://icanhazdadjoke.com/', {
         Accept: 'application/json',
@@ -145,13 +159,23 @@ export async function getTriviaQuestion(): Promise<TriviaQuestion> {
     };
     const decode = (s: string) =>
         s
-            .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-            .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+            .replace(/&#(\d+);/g, (_, n) => {
+                const code = Number(n);
+                return code > 0 && code < 0x10FFFF ? String.fromCharCode(code) : '';
+            })
+            .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => {
+                const code = parseInt(h, 16);
+                return code > 0 && code < 0x10FFFF ? String.fromCharCode(code) : '';
+            })
             .replace(/&[a-zA-Z]+;/g, (m) => entities[m] || m);
 
     const correct = decode(q.correct_answer);
     const incorrect = q.incorrect_answers.map(decode);
-    const allAnswers = [...incorrect, correct].sort(() => Math.random() - 0.5);
+    const allAnswers = [...incorrect, correct];
+    for (let i = allAnswers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allAnswers[i], allAnswers[j]] = [allAnswers[j], allAnswers[i]];
+    }
 
     return {
         question: decode(q.question),
@@ -257,5 +281,31 @@ export async function getYouTubeTrending(
             thumbnail: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || '',
         })),
         nextPageToken: data.nextPageToken || '',
+    };
+}
+
+export async function getLatestXkcd(): Promise<XkcdComic> {
+    const data = await fetchJson('https://xkcd.com/info.0.json');
+    return {
+        num: data.num,
+        title: data.title,
+        img: data.img,
+        alt: data.alt,
+        year: data.year,
+        month: data.month,
+        day: data.day,
+    };
+}
+
+export async function getXkcdComic(num: number): Promise<XkcdComic> {
+    const data = await fetchJson(`https://xkcd.com/${num}/info.0.json`);
+    return {
+        num: data.num,
+        title: data.title,
+        img: data.img,
+        alt: data.alt,
+        year: data.year,
+        month: data.month,
+        day: data.day,
     };
 }

@@ -79,10 +79,7 @@ export class YouTubeViewProvider implements vscode.WebviewViewProvider {
                 }
                 case 'openVideo': {
                     const ytUrl = vscode.Uri.parse(`https://www.youtube.com/watch?v=${msg.videoId}`);
-                    vscode.env.openExternal(ytUrl).then(() => {}, () => {
-                        // fallback: use xdg-open directly
-                        require('child_process').exec(`xdg-open "${ytUrl.toString()}"`);
-                    });
+                    vscode.env.openExternal(ytUrl);
                     break;
                 }
             }

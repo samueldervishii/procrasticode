@@ -8,6 +8,8 @@ import {
     getTriviaQuestion,
     searchYouTube,
     getYouTubeTrending,
+    getLatestXkcd,
+    getXkcdComic,
 } from '../api/apis';
 
 export class DashboardPanel {
@@ -21,6 +23,7 @@ export class DashboardPanel {
 
         this.panel.webview.onDidReceiveMessage(
             async (msg) => {
+                try {
                 switch (msg.command) {
                     case 'getDadJoke': {
                         const joke = await getDadJoke();
@@ -78,6 +81,37 @@ export class DashboardPanel {
                             correct: trivia.correctAnswer,
                             category: trivia.category,
                             difficulty: trivia.difficulty,
+                        });
+                        break;
+                    }
+                    case 'getLatestXkcd': {
+                        const comic = await getLatestXkcd();
+                        this.panel.webview.postMessage({
+                            command: 'xkcd',
+                            num: comic.num,
+                            title: comic.title,
+                            img: comic.img,
+                            alt: comic.alt,
+                            year: comic.year,
+                            month: comic.month,
+                            day: comic.day,
+                        });
+                        break;
+                    }
+                    case 'getRandomXkcd': {
+                        const latest = await getLatestXkcd();
+                        let randomNum = Math.floor(Math.random() * latest.num) + 1;
+                        if (randomNum === 404) { randomNum = 405; }
+                        const comic = await getXkcdComic(randomNum);
+                        this.panel.webview.postMessage({
+                            command: 'xkcd',
+                            num: comic.num,
+                            title: comic.title,
+                            img: comic.img,
+                            alt: comic.alt,
+                            year: comic.year,
+                            month: comic.month,
+                            day: comic.day,
                         });
                         break;
                     }
@@ -143,6 +177,23 @@ export class DashboardPanel {
                         });
                         break;
                     }
+                    case 'pomodoroComplete': {
+                        const message = msg.mode === 'Work'
+                            ? `Work session #${msg.count} complete! Time for a break.`
+                            : `${msg.mode} is over! Ready to get back to work?`;
+                        vscode.window.showInformationMessage(
+                            `ProcrastiCode: ${message}`,
+                            'Open Dashboard'
+                        ).then((action) => {
+                            if (action === 'Open Dashboard') {
+                                this.panel.reveal();
+                            }
+                        });
+                        break;
+                    }
+                }
+                } catch (err: any) {
+                    vscode.window.showErrorMessage(`ProcrastiCode: ${err.message}`);
                 }
             },
             null,
@@ -551,8 +602,8 @@ export class DashboardPanel {
 
     <!-- Tabs -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('fun')">Fun Stuff</button>
-        <button class="tab-btn" onclick="switchTab('youtube')">YouTube</button>
+        <button class="tab-btn active" onclick="switchTab('fun', this)">Fun Stuff</button>
+        <button class="tab-btn" onclick="switchTab('youtube', this)">YouTube</button>
     </div>
 
     <!-- FUN TAB -->
@@ -612,6 +663,49 @@ export class DashboardPanel {
                     <button onclick="send('getTrivia')">New Question</button>
                 </div>
             </div>
+
+            <!-- XKCD Comics Card -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="emoji">&#128214;</span>
+                    <h2>XKCD Comics</h2>
+                </div>
+                <div class="card-body">
+                    <div id="xkcd-meta" style="font-size: 12px; color: var(--vscode-descriptionForeground, #6c7086); margin-bottom: 8px;"></div>
+                    <div id="xkcd-title" class="content-text" style="font-weight: 600; margin-bottom: 8px;">Load an XKCD comic!</div>
+                    <img id="xkcd-img" style="width: 100%; max-height: 400px; object-fit: contain; border-radius: 8px; margin-bottom: 8px; display: none; background: #fff;" alt="XKCD Comic"/>
+                    <div id="xkcd-tooltip" style="font-size: 13px; color: var(--vscode-descriptionForeground, #6c7086); font-style: italic; line-height: 1.5; margin-bottom: 12px; padding: 8px 12px; background: var(--vscode-input-background, #313244); border-radius: 6px; display: none;"></div>
+                    <div class="btn-row">
+                        <button onclick="send('getRandomXkcd')">Random Comic</button>
+                        <button onclick="send('getLatestXkcd')" class="secondary">Latest Comic</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pomodoro Timer Card -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="emoji">&#127813;</span>
+                    <h2>Pomodoro Timer</h2>
+                </div>
+                <div class="card-body">
+                    <div id="pomo-session-count" style="text-align: center; font-size: 13px; color: var(--vscode-descriptionForeground, #6c7086); margin-bottom: 8px;">Sessions completed: 0</div>
+                    <div id="pomo-mode-label" style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--vscode-button-background, #89b4fa);">Work</div>
+                    <div id="pomo-display" style="text-align: center; font-size: 48px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 8px; letter-spacing: 2px;">25:00</div>
+                    <div style="width: 100%; height: 6px; background: var(--vscode-input-background, #313244); border-radius: 3px; margin-bottom: 16px; overflow: hidden;">
+                        <div id="pomo-progress-fill" style="width: 0%; height: 100%; background: var(--vscode-button-background, #89b4fa); border-radius: 3px; transition: width 1s linear;"></div>
+                    </div>
+                    <div class="btn-row" style="margin-bottom: 8px;">
+                        <button id="pomo-start-btn" onclick="pomoToggle()">Start</button>
+                        <button onclick="pomoReset()" class="secondary">Reset</button>
+                    </div>
+                    <div class="btn-row">
+                        <button id="pomo-work-btn" onclick="pomoSetMode('work')" style="background: #a6e3a1; color: #1e1e2e;">Work 25</button>
+                        <button id="pomo-short-btn" onclick="pomoSetMode('short')" class="secondary">Short 5</button>
+                        <button id="pomo-long-btn" onclick="pomoSetMode('long')" class="secondary">Long 15</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -660,15 +754,15 @@ export class DashboardPanel {
         let currentCorrect = '';
 
         function send(command, data) {
-            vscode.postMessage({ command, ...data });
+            vscode.postMessage({ command, ...(data || {}) });
         }
 
         // --- Tabs ---
-        function switchTab(tab) {
+        function switchTab(tab, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
-            event.target.classList.add('active');
+            btn.classList.add('active');
         }
 
         // --- YouTube ---
@@ -793,6 +887,24 @@ export class DashboardPanel {
                     playVideo(msg.videoId, msg.title);
                     break;
                 }
+
+                case 'xkcd': {
+                    var xImg = document.getElementById('xkcd-img');
+                    var xTitle = document.getElementById('xkcd-title');
+                    var xMeta = document.getElementById('xkcd-meta');
+                    var xTooltip = document.getElementById('xkcd-tooltip');
+                    xTitle.textContent = msg.title;
+                    xTitle.className = 'content-text fade-in';
+                    xMeta.textContent = '#' + msg.num + ' \\u2014 ' + msg.year + '-' + String(msg.month).padStart(2, '0') + '-' + String(msg.day).padStart(2, '0');
+                    xImg.src = msg.img;
+                    xImg.alt = msg.alt;
+                    xImg.title = msg.alt;
+                    xImg.style.display = 'block';
+                    xImg.className = 'fade-in';
+                    xTooltip.textContent = msg.alt;
+                    xTooltip.style.display = 'block';
+                    break;
+                }
             }
         });
 
@@ -817,6 +929,95 @@ export class DashboardPanel {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // --- Pomodoro Timer ---
+        var pomoMode = 'work';
+        var pomoRunning = false;
+        var pomoSeconds = 25 * 60;
+        var pomoTotal = 25 * 60;
+        var pomoInterval = null;
+        var pomoCount = 0;
+
+        var pomoDurations = { work: 25 * 60, short: 5 * 60, long: 15 * 60 };
+        var pomoLabels = { work: 'Work', short: 'Short Break', long: 'Long Break' };
+
+        function pomoUpdateDisplay() {
+            var mins = Math.floor(pomoSeconds / 60);
+            var secs = pomoSeconds % 60;
+            document.getElementById('pomo-display').textContent =
+                String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+            var elapsed = pomoTotal - pomoSeconds;
+            var pct = pomoTotal > 0 ? (elapsed / pomoTotal) * 100 : 0;
+            document.getElementById('pomo-progress-fill').style.width = pct + '%';
+        }
+
+        function pomoToggle() {
+            if (pomoRunning) {
+                clearInterval(pomoInterval);
+                pomoInterval = null;
+                pomoRunning = false;
+                document.getElementById('pomo-start-btn').textContent = 'Resume';
+            } else {
+                pomoRunning = true;
+                document.getElementById('pomo-start-btn').textContent = 'Pause';
+                pomoInterval = setInterval(function() {
+                    if (pomoSeconds <= 0) {
+                        clearInterval(pomoInterval);
+                        pomoInterval = null;
+                        pomoRunning = false;
+                        document.getElementById('pomo-start-btn').textContent = 'Start';
+                        if (pomoMode === 'work') {
+                            pomoCount++;
+                            document.getElementById('pomo-session-count').textContent =
+                                'Sessions completed: ' + pomoCount;
+                        }
+                        send('pomodoroComplete', { mode: pomoLabels[pomoMode], count: pomoCount });
+                        if (pomoMode === 'work') {
+                            pomoSetMode(pomoCount % 4 === 0 ? 'long' : 'short');
+                        } else {
+                            pomoSetMode('work');
+                        }
+                        return;
+                    }
+                    pomoSeconds--;
+                    pomoUpdateDisplay();
+                }, 1000);
+            }
+        }
+
+        function pomoReset() {
+            clearInterval(pomoInterval);
+            pomoInterval = null;
+            pomoRunning = false;
+            pomoSeconds = pomoDurations[pomoMode];
+            pomoTotal = pomoDurations[pomoMode];
+            document.getElementById('pomo-start-btn').textContent = 'Start';
+            pomoUpdateDisplay();
+        }
+
+        function pomoSetMode(mode) {
+            clearInterval(pomoInterval);
+            pomoInterval = null;
+            pomoRunning = false;
+            pomoMode = mode;
+            pomoSeconds = pomoDurations[mode];
+            pomoTotal = pomoDurations[mode];
+            document.getElementById('pomo-start-btn').textContent = 'Start';
+            document.getElementById('pomo-mode-label').textContent = pomoLabels[mode];
+            pomoUpdateDisplay();
+            var modeIds = { work: 'pomo-work-btn', short: 'pomo-short-btn', long: 'pomo-long-btn' };
+            Object.keys(modeIds).forEach(function(m) {
+                var btn = document.getElementById(modeIds[m]);
+                if (m === mode) {
+                    btn.style.background = '#a6e3a1';
+                    btn.style.color = '#1e1e2e';
+                } else {
+                    btn.style.background = '';
+                    btn.style.color = '';
+                    btn.className = 'secondary';
+                }
+            });
         }
     </script>
 </body>
