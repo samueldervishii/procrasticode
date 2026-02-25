@@ -14,7 +14,7 @@ Your developer break-time companion for VS Code — jokes, trivia, cute animals,
 | **Reddit Feed** | Hot posts from r/technology, r/programming, r/webdev, r/gadgets |
 | **Dev.to** | Trending developer articles |
 | **Lobsters** | Top tech stories from lobste.rs |
-| **YouTube** | Search, browse trending, and watch videos inside VS Code |
+| **YouTube** | Search, browse trending videos inside VS Code |
 | **Status Bar** | Click the smiley for an instant joke notification |
 
 ## Quick Start
