@@ -1,95 +1,113 @@
-import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
-import mammoth from 'mammoth';
+import * as vscode from "vscode";
+import * as fs from "fs";
+import * as path from "path";
+import mammoth from "mammoth";
 
 export class DocxViewerPanel {
-    public static currentPanel: DocxViewerPanel | undefined;
-    private readonly panel: vscode.WebviewPanel;
-    private disposables: vscode.Disposable[] = [];
+  public static currentPanel: DocxViewerPanel | undefined;
+  private readonly panel: vscode.WebviewPanel;
+  private disposables: vscode.Disposable[] = [];
 
-    private constructor(panel: vscode.WebviewPanel, html: string, fileName: string) {
-        this.panel = panel;
-        this.panel.webview.html = this.getHtml(html, fileName);
-        this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+  private constructor(
+    panel: vscode.WebviewPanel,
+    html: string,
+    fileName: string,
+  ) {
+    this.panel = panel;
+    this.panel.webview.html = this.getHtml(html, fileName);
+    this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+  }
+
+  public static async createOrShow(fileUri?: vscode.Uri): Promise<void> {
+    let uri = fileUri;
+    if (!uri) {
+      const picked = await vscode.window.showOpenDialog({
+        canSelectMany: false,
+        filters: { "Word Documents": ["docx"] },
+        openLabel: "Open Word Document",
+      });
+      if (!picked || picked.length === 0) {
+        return;
+      }
+      uri = picked[0];
     }
 
-    public static async createOrShow(fileUri?: vscode.Uri): Promise<void> {
-        let uri = fileUri;
-        if (!uri) {
-            const picked = await vscode.window.showOpenDialog({
-                canSelectMany: false,
-                filters: { 'Word Documents': ['docx'] },
-                openLabel: 'Open Word Document',
+    const filePath = uri.fsPath;
+    const fileName = path.basename(filePath);
+
+    let docBuffer: Buffer;
+    try {
+      docBuffer = fs.readFileSync(filePath);
+    } catch {
+      vscode.window.showErrorMessage(
+        `Failed to read Word document: ${filePath}`,
+      );
+      return;
+    }
+
+    let result;
+    try {
+      result = await mammoth.convertToHtml(
+        { buffer: docBuffer },
+        {
+          convertImage: mammoth.images.imgElement(function (image: any) {
+            return image.read("base64").then(function (imageBuffer: string) {
+              return {
+                src: "data:" + image.contentType + ";base64," + imageBuffer,
+              };
             });
-            if (!picked || picked.length === 0) { return; }
-            uri = picked[0];
-        }
-
-        const filePath = uri.fsPath;
-        const fileName = path.basename(filePath);
-
-        let docBuffer: Buffer;
-        try {
-            docBuffer = fs.readFileSync(filePath);
-        } catch {
-            vscode.window.showErrorMessage(`Failed to read Word document: ${filePath}`);
-            return;
-        }
-
-        let result;
-        try {
-            result = await mammoth.convertToHtml(
-                { buffer: docBuffer },
-                {
-                    convertImage: mammoth.images.imgElement(function(image: any) {
-                        return image.read('base64').then(function(imageBuffer: string) {
-                            return { src: 'data:' + image.contentType + ';base64,' + imageBuffer };
-                        });
-                    }),
-                }
-            );
-        } catch (err: any) {
-            vscode.window.showErrorMessage(`Failed to convert Word document: ${err.message}`);
-            return;
-        }
-
-        const column = vscode.window.activeTextEditor
-            ? vscode.window.activeTextEditor.viewColumn
-            : undefined;
-
-        if (DocxViewerPanel.currentPanel) {
-            DocxViewerPanel.currentPanel.panel.reveal(column);
-            DocxViewerPanel.currentPanel.panel.title = `Word: ${fileName}`;
-            DocxViewerPanel.currentPanel.panel.webview.html =
-                DocxViewerPanel.currentPanel.getHtml(result.value, fileName);
-            return;
-        }
-
-        const panel = vscode.window.createWebviewPanel(
-            'procrasticodeDocx',
-            `Word: ${fileName}`,
-            column || vscode.ViewColumn.One,
-            {
-                enableScripts: false,
-                retainContextWhenHidden: true,
-            }
-        );
-
-        DocxViewerPanel.currentPanel = new DocxViewerPanel(panel, result.value, fileName);
+          }),
+        },
+      );
+    } catch (err: any) {
+      vscode.window.showErrorMessage(
+        `Failed to convert Word document: ${err.message}`,
+      );
+      return;
     }
 
-    private dispose(): void {
-        DocxViewerPanel.currentPanel = undefined;
-        this.panel.dispose();
-        while (this.disposables.length) {
-            const d = this.disposables.pop();
-            if (d) { d.dispose(); }
-        }
+    const column = vscode.window.activeTextEditor
+      ? vscode.window.activeTextEditor.viewColumn
+      : undefined;
+
+    if (DocxViewerPanel.currentPanel) {
+      DocxViewerPanel.currentPanel.panel.reveal(column);
+      DocxViewerPanel.currentPanel.panel.title = `Word: ${fileName}`;
+      DocxViewerPanel.currentPanel.panel.webview.html =
+        DocxViewerPanel.currentPanel.getHtml(result.value, fileName);
+      return;
     }
 
-    private getHtml(docHtml: string, fileName: string): string {
-        return /*html*/ `<!DOCTYPE html>
+    const panel = vscode.window.createWebviewPanel(
+      "procrasticodeDocx",
+      `Word: ${fileName}`,
+      column || vscode.ViewColumn.One,
+      {
+        enableScripts: false,
+        retainContextWhenHidden: true,
+      },
+    );
+
+    DocxViewerPanel.currentPanel = new DocxViewerPanel(
+      panel,
+      result.value,
+      fileName,
+    );
+  }
+
+  private dispose(): void {
+    DocxViewerPanel.currentPanel = undefined;
+    this.panel.dispose();
+    while (this.disposables.length) {
+      const d = this.disposables.pop();
+      if (d) {
+        d.dispose();
+      }
+    }
+  }
+
+  private getHtml(docHtml: string, fileName: string): string {
+    return /*html*/ `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -214,9 +232,13 @@ export class DocxViewerPanel {
     </div>
 </body>
 </html>`;
-    }
+  }
 
-    private escapeHtml(text: string): string {
-        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
 }

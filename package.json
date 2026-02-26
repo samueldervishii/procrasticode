@@ -2,8 +2,8 @@
   "name": "procrasticode",
   "displayName": "ProcrastiCode",
   "description": "Your developer break-time companion — jokes, trivia, animal pics, fun facts, news, PDF/Word viewer & Claude AI chat right in VS Code",
-  "version": "0.0.2",
-  "publisher": "samuel",
+  "version": "0.0.3-beta",
+  "publisher": "procrasti",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -60,13 +60,17 @@
       {
         "command": "procrasticode.refreshTools",
         "title": "Refresh"
+      },
+      {
+        "command": "procrasticode.fetchJoke",
+        "title": "ProcrastiCode: Fetch Joke"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "procrasticode",
-          "title": "ProcrastiCode",
+          "title": "ProcrastiCode v0.0.3-beta",
           "icon": "media/processor-icon.svg"
         }
       ]
@@ -79,7 +83,7 @@
         },
         {
           "id": "procrasticodeNews",
-          "name": "Reddit Feed"
+          "name": "News Feed"
         },
         {
           "id": "procrasticodeTools",
@@ -93,8 +97,8 @@
       "properties": {
         "procrasticode.claudeModel": {
           "type": "string",
-          "default": "claude-sonnet-4-20250514",
-          "description": "Claude model to use for chat. Options: claude-sonnet-4-20250514, claude-haiku-4-5-20251001, claude-opus-4-20250514"
+          "default": "claude-sonnet-4-6",
+          "description": "Claude model to use for chat. Options: claude-sonnet-4-6, claude-haiku-4-5-20251001, claude-opus-4-6"
         }
       }
     },

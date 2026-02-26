@@ -1,84 +1,116 @@
-import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as vscode from "vscode";
+import * as fs from "fs";
+import * as path from "path";
 
 export class PdfViewerPanel {
-    public static currentPanel: PdfViewerPanel | undefined;
-    private readonly panel: vscode.WebviewPanel;
-    private disposables: vscode.Disposable[] = [];
+  public static currentPanel: PdfViewerPanel | undefined;
+  private readonly panel: vscode.WebviewPanel;
+  private disposables: vscode.Disposable[] = [];
 
-    private constructor(panel: vscode.WebviewPanel, pdfBase64: string, fileName: string, extensionUri: vscode.Uri) {
-        this.panel = panel;
-        this.panel.webview.html = this.getHtml(pdfBase64, fileName, extensionUri);
-        this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+  private constructor(
+    panel: vscode.WebviewPanel,
+    pdfBase64: string,
+    fileName: string,
+    extensionUri: vscode.Uri,
+  ) {
+    this.panel = panel;
+    this.panel.webview.html = this.getHtml(pdfBase64, fileName, extensionUri);
+    this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+  }
+
+  public static async createOrShow(
+    extensionUri: vscode.Uri,
+    fileUri?: vscode.Uri,
+  ): Promise<void> {
+    let uri = fileUri;
+    if (!uri) {
+      const picked = await vscode.window.showOpenDialog({
+        canSelectMany: false,
+        filters: { "PDF Files": ["pdf"] },
+        openLabel: "Open PDF",
+      });
+      if (!picked || picked.length === 0) {
+        return;
+      }
+      uri = picked[0];
     }
 
-    public static async createOrShow(extensionUri: vscode.Uri, fileUri?: vscode.Uri): Promise<void> {
-        let uri = fileUri;
-        if (!uri) {
-            const picked = await vscode.window.showOpenDialog({
-                canSelectMany: false,
-                filters: { 'PDF Files': ['pdf'] },
-                openLabel: 'Open PDF',
-            });
-            if (!picked || picked.length === 0) { return; }
-            uri = picked[0];
-        }
+    const filePath = uri.fsPath;
+    const fileName = path.basename(filePath);
 
-        const filePath = uri.fsPath;
-        const fileName = path.basename(filePath);
-
-        let pdfBytes: Buffer;
-        try {
-            pdfBytes = fs.readFileSync(filePath);
-        } catch {
-            vscode.window.showErrorMessage(`Failed to read PDF file: ${filePath}`);
-            return;
-        }
-
-        const pdfBase64 = pdfBytes.toString('base64');
-
-        const column = vscode.window.activeTextEditor
-            ? vscode.window.activeTextEditor.viewColumn
-            : undefined;
-
-        if (PdfViewerPanel.currentPanel) {
-            PdfViewerPanel.currentPanel.panel.reveal(column);
-            PdfViewerPanel.currentPanel.panel.webview.html =
-                PdfViewerPanel.currentPanel.getHtml(pdfBase64, fileName, extensionUri);
-            return;
-        }
-
-        const panel = vscode.window.createWebviewPanel(
-            'procrasticodePdf',
-            `PDF: ${fileName}`,
-            column || vscode.ViewColumn.One,
-            {
-                enableScripts: true,
-                retainContextWhenHidden: true,
-                localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'node_modules', 'pdfjs-dist')],
-            }
-        );
-
-        PdfViewerPanel.currentPanel = new PdfViewerPanel(panel, pdfBase64, fileName, extensionUri);
+    let pdfBytes: Buffer;
+    try {
+      pdfBytes = fs.readFileSync(filePath);
+    } catch {
+      vscode.window.showErrorMessage(`Failed to read PDF file: ${filePath}`);
+      return;
     }
 
-    private dispose(): void {
-        PdfViewerPanel.currentPanel = undefined;
-        this.panel.dispose();
-        while (this.disposables.length) {
-            const d = this.disposables.pop();
-            if (d) { d.dispose(); }
-        }
+    const pdfBase64 = pdfBytes.toString("base64");
+
+    const column = vscode.window.activeTextEditor
+      ? vscode.window.activeTextEditor.viewColumn
+      : undefined;
+
+    if (PdfViewerPanel.currentPanel) {
+      PdfViewerPanel.currentPanel.panel.reveal(column);
+      PdfViewerPanel.currentPanel.panel.webview.html =
+        PdfViewerPanel.currentPanel.getHtml(pdfBase64, fileName, extensionUri);
+      return;
     }
 
-    private getHtml(pdfBase64: string, fileName: string, extensionUri: vscode.Uri): string {
-        const webview = this.panel.webview;
-        const pdfjsDir = vscode.Uri.joinPath(extensionUri, 'node_modules', 'pdfjs-dist', 'build');
-        const pdfjsUri = webview.asWebviewUri(vscode.Uri.joinPath(pdfjsDir, 'pdf.mjs'));
-        const workerUri = webview.asWebviewUri(vscode.Uri.joinPath(pdfjsDir, 'pdf.worker.mjs'));
+    const panel = vscode.window.createWebviewPanel(
+      "procrasticodePdf",
+      `PDF: ${fileName}`,
+      column || vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [
+          vscode.Uri.joinPath(extensionUri, "node_modules", "pdfjs-dist"),
+        ],
+      },
+    );
 
-        return /*html*/ `<!DOCTYPE html>
+    PdfViewerPanel.currentPanel = new PdfViewerPanel(
+      panel,
+      pdfBase64,
+      fileName,
+      extensionUri,
+    );
+  }
+
+  private dispose(): void {
+    PdfViewerPanel.currentPanel = undefined;
+    this.panel.dispose();
+    while (this.disposables.length) {
+      const d = this.disposables.pop();
+      if (d) {
+        d.dispose();
+      }
+    }
+  }
+
+  private getHtml(
+    pdfBase64: string,
+    fileName: string,
+    extensionUri: vscode.Uri,
+  ): string {
+    const webview = this.panel.webview;
+    const pdfjsDir = vscode.Uri.joinPath(
+      extensionUri,
+      "node_modules",
+      "pdfjs-dist",
+      "build",
+    );
+    const pdfjsUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(pdfjsDir, "pdf.mjs"),
+    );
+    const workerUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(pdfjsDir, "pdf.worker.mjs"),
+    );
+
+    return /*html*/ `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -261,9 +293,13 @@ export class PdfViewerPanel {
     </script>
 </body>
 </html>`;
-    }
+  }
 
-    private escapeHtml(text: string): string {
-        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
 }

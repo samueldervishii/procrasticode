@@ -1,168 +1,188 @@
-import * as vscode from 'vscode';
-import { sendChatMessage, ChatMessage } from '../api/claude';
+import * as vscode from "vscode";
+import { sendChatMessage, ChatMessage } from "../api/claude";
 
 const MODEL_OPTIONS: { id: string; label: string }[] = [
-    { id: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
-    { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
-    { id: 'claude-opus-4-20250514', label: 'Opus 4' },
+  { id: "claude-sonnet-4-6", label: "Sonnet 4.6" },
+  { id: "claude-haiku-4-5-20251001", label: "Haiku 4.5" },
+  { id: "claude-opus-4-6", label: "Opus 4.6" },
 ];
 
 export class ToolsViewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'procrasticodeTools';
-    private view?: vscode.WebviewView;
-    private context: vscode.ExtensionContext;
-    private messages: ChatMessage[] = [];
+  public static readonly viewType = "procrasticodeTools";
+  private view?: vscode.WebviewView;
+  private context: vscode.ExtensionContext;
+  private messages: ChatMessage[] = [];
 
-    constructor(context: vscode.ExtensionContext) {
-        this.context = context;
-    }
+  constructor(context: vscode.ExtensionContext) {
+    this.context = context;
+  }
 
-    public resolveWebviewView(
-        webviewView: vscode.WebviewView,
-        _resolveContext: vscode.WebviewViewResolveContext,
-        _token: vscode.CancellationToken
-    ): void {
-        this.view = webviewView;
+  public resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _resolveContext: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken,
+  ): void {
+    this.view = webviewView;
 
-        webviewView.webview.options = {
-            enableScripts: true,
-            localResourceRoots: [
-                vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist'),
-            ],
-        };
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [
+        vscode.Uri.joinPath(
+          this.context.extensionUri,
+          "node_modules",
+          "@vscode",
+          "codicons",
+          "dist",
+        ),
+      ],
+    };
 
-        const codiconUri = webviewView.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
-        );
+    const codiconUri = webviewView.webview.asWebviewUri(
+      vscode.Uri.joinPath(
+        this.context.extensionUri,
+        "node_modules",
+        "@vscode",
+        "codicons",
+        "dist",
+        "codicon.css",
+      ),
+    );
 
-        webviewView.webview.html = this.getHtml(codiconUri);
+    webviewView.webview.html = this.getHtml(codiconUri);
 
-        webviewView.webview.onDidReceiveMessage(async (msg) => {
-            switch (msg.command) {
-                case 'openChat':
-                    this.view?.webview.postMessage({ command: 'showChat' });
-                    break;
-                case 'backToTools':
-                    this.view?.webview.postMessage({ command: 'showTools' });
-                    break;
-                case 'runCommand':
-                    vscode.commands.executeCommand(msg.commandId, msg.arg);
-                    break;
-                case 'sendMessage':
-                    await this.handleUserMessage(msg.text);
-                    break;
-                case 'newChat':
-                    this.messages = [];
-                    this.view?.webview.postMessage({ command: 'clearChat' });
-                    break;
-                case 'changeApiKey':
-                    await this.promptForApiKey();
-                    break;
-                case 'changeModel': {
-                    const picked = await vscode.window.showQuickPick(
-                        MODEL_OPTIONS.map((m) => ({
-                            label: m.label,
-                            description: m.id,
-                            id: m.id,
-                        })),
-                        { placeHolder: 'Select a Claude model' }
-                    );
-                    if (picked) {
-                        await vscode.workspace
-                            .getConfiguration('procrasticode')
-                            .update('claudeModel', picked.description, vscode.ConfigurationTarget.Global);
-                        this.view?.webview.postMessage({
-                            command: 'modelChanged',
-                            modelId: picked.description,
-                            modelLabel: picked.label,
-                        });
-                    }
-                    break;
-                }
-            }
-        });
-    }
-
-    public showChat(): void {
-        this.view?.webview.postMessage({ command: 'showChat' });
-    }
-
-    private async getApiKey(): Promise<string | undefined> {
-        let key = await this.context.secrets.get('procrasticode.claudeApiKey');
-        if (!key) {
-            key = await this.promptForApiKey();
-        }
-        return key;
-    }
-
-    private async promptForApiKey(): Promise<string | undefined> {
-        const key = await vscode.window.showInputBox({
-            prompt: 'Enter your Anthropic API key to use Claude Chat',
-            placeHolder: 'sk-ant-...',
-            password: true,
-            ignoreFocusOut: true,
-        });
-        if (key) {
-            await this.context.secrets.store('procrasticode.claudeApiKey', key);
-            this.view?.webview.postMessage({ command: 'apiKeySet' });
-            return key;
-        }
-        return undefined;
-    }
-
-    private async handleUserMessage(text: string): Promise<void> {
-        const apiKey = await this.getApiKey();
-        if (!apiKey) {
+    webviewView.webview.onDidReceiveMessage(async (msg) => {
+      switch (msg.command) {
+        case "openChat":
+          this.view?.webview.postMessage({ command: "showChat" });
+          break;
+        case "backToTools":
+          this.view?.webview.postMessage({ command: "showTools" });
+          break;
+        case "runCommand":
+          vscode.commands.executeCommand(msg.commandId, msg.arg);
+          break;
+        case "sendMessage":
+          await this.handleUserMessage(msg.text);
+          break;
+        case "newChat":
+          this.messages = [];
+          this.view?.webview.postMessage({ command: "clearChat" });
+          break;
+        case "changeApiKey":
+          await this.promptForApiKey();
+          break;
+        case "changeModel": {
+          const picked = await vscode.window.showQuickPick(
+            MODEL_OPTIONS.map((m) => ({
+              label: m.label,
+              description: m.id,
+              id: m.id,
+            })),
+            { placeHolder: "Select a Claude model" },
+          );
+          if (picked) {
+            await vscode.workspace
+              .getConfiguration("procrasticode")
+              .update(
+                "claudeModel",
+                picked.description,
+                vscode.ConfigurationTarget.Global,
+              );
             this.view?.webview.postMessage({
-                command: 'error',
-                text: 'No API key set. Click "Set API Key" to add your Anthropic API key.',
+              command: "modelChanged",
+              modelId: picked.description,
+              modelLabel: picked.label,
             });
-            return;
+          }
+          break;
         }
+      }
+    });
+  }
 
-        const model = vscode.workspace
-            .getConfiguration('procrasticode')
-            .get<string>('claudeModel', 'claude-sonnet-4-20250514');
+  public showChat(): void {
+    this.view?.webview.postMessage({ command: "showChat" });
+  }
 
-        this.messages.push({ role: 'user', content: text });
-        this.view?.webview.postMessage({ command: 'userMessage', text });
-        this.view?.webview.postMessage({ command: 'streamStart' });
+  private async getApiKey(): Promise<string | undefined> {
+    let key = await this.context.secrets.get("procrasticode.claudeApiKey");
+    if (!key) {
+      key = await this.promptForApiKey();
+    }
+    return key;
+  }
 
-        try {
-            const fullResponse = await sendChatMessage(
-                apiKey,
-                model,
-                this.messages,
-                (chunk) => {
-                    this.view?.webview.postMessage({ command: 'streamChunk', text: chunk });
-                }
-            );
-            this.messages.push({ role: 'assistant', content: fullResponse });
-            this.view?.webview.postMessage({ command: 'streamEnd' });
-        } catch (err: any) {
-            this.view?.webview.postMessage({ command: 'streamEnd' });
-            this.view?.webview.postMessage({ command: 'error', text: err.message });
-        }
+  private async promptForApiKey(): Promise<string | undefined> {
+    const key = await vscode.window.showInputBox({
+      prompt: "Enter your Anthropic API key to use Claude Chat",
+      placeHolder: "sk-ant-...",
+      password: true,
+      ignoreFocusOut: true,
+    });
+    if (key) {
+      await this.context.secrets.store("procrasticode.claudeApiKey", key);
+      this.view?.webview.postMessage({ command: "apiKeySet" });
+      return key;
+    }
+    return undefined;
+  }
+
+  private async handleUserMessage(text: string): Promise<void> {
+    const apiKey = await this.getApiKey();
+    if (!apiKey) {
+      this.view?.webview.postMessage({
+        command: "error",
+        text: 'No API key set. Click "Set API Key" to add your Anthropic API key.',
+      });
+      return;
     }
 
-    private getCurrentModelLabel(): string {
-        const modelId = vscode.workspace
-            .getConfiguration('procrasticode')
-            .get<string>('claudeModel', 'claude-sonnet-4-20250514');
-        const found = MODEL_OPTIONS.find((m) => m.id === modelId);
-        return found ? found.label : modelId;
-    }
+    const model = vscode.workspace
+      .getConfiguration("procrasticode")
+      .get<string>("claudeModel", "claude-sonnet-4-20250514");
 
-    private getCurrentModelId(): string {
-        return vscode.workspace
-            .getConfiguration('procrasticode')
-            .get<string>('claudeModel', 'claude-sonnet-4-20250514');
-    }
+    this.messages.push({ role: "user", content: text });
+    this.view?.webview.postMessage({ command: "userMessage", text });
+    this.view?.webview.postMessage({ command: "streamStart" });
 
-    private getHtml(codiconUri: vscode.Uri): string {
-        const modelLabel = this.getCurrentModelLabel();
-        const modelId = this.getCurrentModelId();
-        return /*html*/ `<!DOCTYPE html>
+    try {
+      const fullResponse = await sendChatMessage(
+        apiKey,
+        model,
+        this.messages,
+        (chunk) => {
+          this.view?.webview.postMessage({
+            command: "streamChunk",
+            text: chunk,
+          });
+        },
+      );
+      this.messages.push({ role: "assistant", content: fullResponse });
+      this.view?.webview.postMessage({ command: "streamEnd" });
+    } catch (err: any) {
+      this.view?.webview.postMessage({ command: "streamEnd" });
+      this.view?.webview.postMessage({ command: "error", text: err.message });
+    }
+  }
+
+  private getCurrentModelLabel(): string {
+    const modelId = vscode.workspace
+      .getConfiguration("procrasticode")
+      .get<string>("claudeModel", "claude-sonnet-4-20250514");
+    const found = MODEL_OPTIONS.find((m) => m.id === modelId);
+    return found ? found.label : modelId;
+  }
+
+  private getCurrentModelId(): string {
+    return vscode.workspace
+      .getConfiguration("procrasticode")
+      .get<string>("claudeModel", "claude-sonnet-4-20250514");
+  }
+
+  private getHtml(codiconUri: vscode.Uri): string {
+    const modelLabel = this.getCurrentModelLabel();
+    const modelId = this.getCurrentModelId();
+    return /*html*/ `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -813,5 +833,5 @@ export class ToolsViewProvider implements vscode.WebviewViewProvider {
     </script>
 </body>
 </html>`;
-    }
+  }
 }

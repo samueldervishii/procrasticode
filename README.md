@@ -10,7 +10,7 @@ cd procrasticode
 npm install
 npm run compile
 npx @vscode/vsce package --allow-missing-repository
-code --install-extension procrasticode-0.0.2.vsix --force
+code --install-extension procrasticode-0.0.3.vsix --force
 ```
 
 Then reload VS Code: `Ctrl+Shift+P` > "Developer: Reload Window"
@@ -20,7 +20,7 @@ Then reload VS Code: `Ctrl+Shift+P` > "Developer: Reload Window"
 **Sidebar** — Click the ProcrastiCode icon in the activity bar:
 
 - **Jokes & Facts** — Dad jokes, Chuck Norris jokes, useless facts as popup notifications
-- **Reddit Feed** — Hot posts from r/technology, r/programming, r/webdev, r/gadgets, plus Dev.to and Lobsters
+- **News Feed** — Hot posts from r/technology, r/programming, r/webdev, r/gadgets, plus Dev.to and Lobsters
 - **Tools** — Quick access to XKCD comics, PDF viewer, Word viewer, and Claude AI chat
 
 **Dashboard** — `Ctrl+Shift+P` > "ProcrastiCode: Open Dashboard"
@@ -53,7 +53,7 @@ npm run compile:check  # Type-check with tsc (no output)
 ```bash
 npm run compile
 npx @vscode/vsce package --allow-missing-repository
-code --install-extension procrasticode-0.0.2.vsix --force
+code --install-extension procrasticode-0.0.3.vsix --force
 ```
 
 ### Debug
@@ -63,5 +63,5 @@ Press **F5** in VS Code to launch the Extension Development Host.
 ## Uninstall
 
 ```bash
-code --uninstall-extension samuel.procrasticode
+code --uninstall-extension procrasti.procrasticode
 ```

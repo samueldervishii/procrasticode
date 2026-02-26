@@ -607,7 +607,12 @@ export class DashboardPanel {
             switch (msg.command) {
                 case 'joke': {
                     const el = document.getElementById('joke-text');
-                    el.innerHTML = msg.text + '<span class="source">\\u2014 ' + msg.source + '</span>';
+                    el.textContent = '';
+                    el.appendChild(document.createTextNode(msg.text));
+                    const src = document.createElement('span');
+                    src.className = 'source';
+                    src.textContent = '\\u2014 ' + msg.source;
+                    el.appendChild(src);
                     el.className = 'content-text fade-in';
                     break;
                 }
