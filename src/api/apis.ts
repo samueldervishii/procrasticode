@@ -82,19 +82,6 @@ export interface LobstersStory {
     tags: string;
 }
 
-export interface YouTubeVideo {
-    title: string;
-    videoId: string;
-    channelTitle: string;
-    description: string;
-    thumbnail: string;
-}
-
-export interface YouTubeResult {
-    videos: YouTubeVideo[];
-    nextPageToken: string;
-}
-
 export interface XkcdComic {
     num: number;
     title: string;
@@ -240,48 +227,6 @@ export async function getLobstersStories(count: number = 10): Promise<LobstersSt
         permalink: s.comments_url || '',
         tags: s.tags?.join(', ') || '',
     }));
-}
-
-export async function searchYouTube(
-    query: string,
-    apiKey: string,
-    count: number = 8,
-    pageToken: string = ''
-): Promise<YouTubeResult> {
-    const q = encodeURIComponent(query);
-    let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${count}&q=${q}&key=${apiKey}`;
-    if (pageToken) { url += `&pageToken=${pageToken}`; }
-    const data = await fetchJson(url);
-    return {
-        videos: (data.items || []).map((item: any) => ({
-            title: item.snippet?.title || 'Untitled',
-            videoId: item.id?.videoId || '',
-            channelTitle: item.snippet?.channelTitle || '',
-            description: item.snippet?.description || '',
-            thumbnail: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || '',
-        })),
-        nextPageToken: data.nextPageToken || '',
-    };
-}
-
-export async function getYouTubeTrending(
-    apiKey: string,
-    count: number = 8,
-    pageToken: string = ''
-): Promise<YouTubeResult> {
-    let url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=${count}&key=${apiKey}`;
-    if (pageToken) { url += `&pageToken=${pageToken}`; }
-    const data = await fetchJson(url);
-    return {
-        videos: (data.items || []).map((item: any) => ({
-            title: item.snippet?.title || 'Untitled',
-            videoId: item.id || '',
-            channelTitle: item.snippet?.channelTitle || '',
-            description: item.snippet?.description || '',
-            thumbnail: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || '',
-        })),
-        nextPageToken: data.nextPageToken || '',
-    };
 }
 
 export async function getLatestXkcd(): Promise<XkcdComic> {

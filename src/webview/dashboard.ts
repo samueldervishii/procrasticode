@@ -6,8 +6,6 @@ import {
     getRandomCat,
     getUselessFact,
     getTriviaQuestion,
-    searchYouTube,
-    getYouTubeTrending,
     getLatestXkcd,
     getXkcdComic,
 } from '../api/apis';
@@ -115,66 +113,10 @@ export class DashboardPanel {
                         });
                         break;
                     }
-                    case 'youtubeSearch': {
-                        const apiKey = vscode.workspace
-                            .getConfiguration('procrasticode')
-                            .get<string>('youtubeApiKey', '');
-                        if (!apiKey) {
-                            this.panel.webview.postMessage({
-                                command: 'youtubeError',
-                                text: 'No YouTube API key set. Go to Settings and search for "procrasticode.youtubeApiKey" to add your free key.',
-                            });
-                            return;
-                        }
-                        try {
-                            const result = await searchYouTube(
-                                msg.query,
-                                apiKey,
-                                8
-                            );
-                            this.panel.webview.postMessage({
-                                command: 'youtubeResults',
-                                videos: result.videos,
-                            });
-                        } catch (err: any) {
-                            this.panel.webview.postMessage({
-                                command: 'youtubeError',
-                                text: `Search failed: ${err.message}`,
-                            });
-                        }
-                        break;
-                    }
-                    case 'youtubeTrending': {
-                        const apiKey = vscode.workspace
-                            .getConfiguration('procrasticode')
-                            .get<string>('youtubeApiKey', '');
-                        if (!apiKey) {
-                            this.panel.webview.postMessage({
-                                command: 'youtubeError',
-                                text: 'No YouTube API key set. Go to Settings and search for "procrasticode.youtubeApiKey" to add your free key.',
-                            });
-                            return;
-                        }
-                        try {
-                            const result = await getYouTubeTrending(apiKey, 8);
-                            this.panel.webview.postMessage({
-                                command: 'youtubeResults',
-                                videos: result.videos,
-                            });
-                        } catch (err: any) {
-                            this.panel.webview.postMessage({
-                                command: 'youtubeError',
-                                text: `Failed to load trending: ${err.message}`,
-                            });
-                        }
-                        break;
-                    }
-                    case 'playVideo': {
-                        this.panel.webview.postMessage({
-                            command: 'playVideo',
-                            videoId: msg.videoId,
-                            title: msg.title,
-                        });
+                    case 'openPdf':
+                    case 'openDocx':
+                    case 'openChat': {
+                        vscode.commands.executeCommand(`procrasticode.${msg.command}`);
                         break;
                     }
                     case 'pomodoroComplete': {
@@ -243,7 +185,7 @@ export class DashboardPanel {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src https://www.youtube.com https://www.youtube-nocookie.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; script-src 'unsafe-inline'; style-src 'unsafe-inline';">
     <title>ProcrastiCode Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -342,7 +284,19 @@ export class DashboardPanel {
             margin-bottom: 16px;
         }
 
-        .card-header .emoji { font-size: 24px; }
+        .card-header .icon-label {
+            font-size: 12px;
+            font-weight: 700;
+            background: var(--vscode-button-background, #89b4fa);
+            color: var(--vscode-button-foreground, #1e1e2e);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
 
         .card-header h2 {
             font-size: 18px;
@@ -470,124 +424,6 @@ export class DashboardPanel {
             margin-bottom: 12px;
         }
 
-        /* YouTube */
-        .yt-search-bar {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .yt-search-bar input {
-            flex: 1;
-            padding: 10px 14px;
-            background: var(--vscode-input-background, #313244);
-            color: var(--vscode-input-foreground, #cdd6f4);
-            border: 1px solid var(--vscode-widget-border, #45475a);
-            border-radius: 8px;
-            font-size: 14px;
-            outline: none;
-        }
-
-        .yt-search-bar input:focus {
-            border-color: var(--vscode-focusBorder, #89b4fa);
-        }
-
-        .yt-search-bar button {
-            width: auto;
-            padding: 10px 20px;
-        }
-
-        .yt-video-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-
-        .yt-video-card {
-            background: var(--vscode-input-background, #313244);
-            border: 1px solid var(--vscode-widget-border, #45475a);
-            border-radius: 10px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .yt-video-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-        }
-
-        .yt-video-card img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-        }
-
-        .yt-video-info {
-            padding: 12px;
-        }
-
-        .yt-video-info h3 {
-            font-size: 13px;
-            line-height: 1.4;
-            margin-bottom: 4px;
-            color: var(--vscode-editor-foreground, #cdd6f4);
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .yt-video-info .channel {
-            font-size: 12px;
-            color: var(--vscode-descriptionForeground, #6c7086);
-        }
-
-        .yt-player-wrap {
-            margin-bottom: 16px;
-            border-radius: 10px;
-            overflow: hidden;
-            display: none;
-        }
-
-        .yt-player-wrap iframe {
-            width: 100%;
-            aspect-ratio: 16 / 9;
-            border: none;
-            border-radius: 10px;
-        }
-
-        .yt-now-playing {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            display: none;
-        }
-
-        .yt-error {
-            color: #f38ba8;
-            font-size: 14px;
-            margin-bottom: 12px;
-            padding: 12px;
-            background: rgba(243, 139, 168, 0.1);
-            border-radius: 8px;
-            display: none;
-        }
-
-        .yt-quick-btns {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .yt-quick-btns button {
-            width: auto;
-            padding: 8px 14px;
-            font-size: 13px;
-        }
-
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
@@ -603,7 +439,7 @@ export class DashboardPanel {
     <!-- Tabs -->
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('fun', this)">Fun Stuff</button>
-        <button class="tab-btn" onclick="switchTab('youtube', this)">YouTube</button>
+        <button class="tab-btn" onclick="switchTab('tools', this)">Tools</button>
     </div>
 
     <!-- FUN TAB -->
@@ -612,7 +448,7 @@ export class DashboardPanel {
             <!-- Jokes Card -->
             <div class="card">
                 <div class="card-header">
-                    <span class="emoji">&#128514;</span>
+                    <span class="icon-label">JK</span>
                     <h2>Jokes</h2>
                 </div>
                 <div class="card-body">
@@ -627,7 +463,7 @@ export class DashboardPanel {
             <!-- Animal Pics Card -->
             <div class="card">
                 <div class="card-header">
-                    <span class="emoji">&#128054;</span>
+                    <span class="icon-label">CA</span>
                     <h2>Cute Animals</h2>
                 </div>
                 <div class="card-body">
@@ -640,7 +476,7 @@ export class DashboardPanel {
             <!-- Fun Facts Card -->
             <div class="card">
                 <div class="card-header">
-                    <span class="emoji">&#128161;</span>
+                    <span class="icon-label">UF</span>
                     <h2>Useless Facts</h2>
                 </div>
                 <div class="card-body">
@@ -652,7 +488,7 @@ export class DashboardPanel {
             <!-- Trivia Card -->
             <div class="card">
                 <div class="card-header">
-                    <span class="emoji">&#129504;</span>
+                    <span class="icon-label">TQ</span>
                     <h2>Trivia Quiz</h2>
                 </div>
                 <div class="card-body">
@@ -667,7 +503,7 @@ export class DashboardPanel {
             <!-- XKCD Comics Card -->
             <div class="card">
                 <div class="card-header">
-                    <span class="emoji">&#128214;</span>
+                    <span class="icon-label">XK</span>
                     <h2>XKCD Comics</h2>
                 </div>
                 <div class="card-body">
@@ -685,7 +521,7 @@ export class DashboardPanel {
             <!-- Pomodoro Timer Card -->
             <div class="card">
                 <div class="card-header">
-                    <span class="emoji">&#127813;</span>
+                    <span class="icon-label">PT</span>
                     <h2>Pomodoro Timer</h2>
                 </div>
                 <div class="card-body">
@@ -709,39 +545,38 @@ export class DashboardPanel {
         </div>
     </div>
 
-    <!-- YOUTUBE TAB -->
-    <div class="tab-content" id="tab-youtube">
-        <div class="card" style="max-width: 900px; margin: 0 auto;">
-            <div class="card-header">
-                <span class="emoji">&#9654;&#65039;</span>
-                <h2>YouTube</h2>
+    <!-- TOOLS TAB -->
+    <div class="tab-content" id="tab-tools">
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon-label">PDF</span>
+                    <h2>PDF Viewer</h2>
+                </div>
+                <div class="card-body">
+                    <div class="content-text">Open and read PDF files right inside VS Code.</div>
+                    <button onclick="send('openPdf')">Open PDF File</button>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="yt-error" id="yt-error"></div>
-
-                <!-- Player -->
-                <div class="yt-now-playing" id="yt-now-playing"></div>
-                <div class="yt-player-wrap" id="yt-player-wrap">
-                    <iframe id="yt-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon-label">DOC</span>
+                    <h2>Word Document Viewer</h2>
                 </div>
-
-                <!-- Search -->
-                <div class="yt-search-bar">
-                    <input type="text" id="yt-search-input" placeholder="Search YouTube..." />
-                    <button onclick="ytSearch()" style="width: auto;">Search</button>
+                <div class="card-body">
+                    <div class="content-text">View .docx Word documents without leaving your editor.</div>
+                    <button onclick="send('openDocx')">Open Word Document</button>
                 </div>
-
-                <!-- Quick search buttons -->
-                <div class="yt-quick-btns">
-                    <button class="secondary" onclick="ytQuick('trending')">Trending</button>
-                    <button class="secondary" onclick="ytQuick('lofi hip hop')">Lofi Beats</button>
-                    <button class="secondary" onclick="ytQuick('coding tutorials')">Coding</button>
-                    <button class="secondary" onclick="ytQuick('tech news today')">Tech News</button>
-                    <button class="secondary" onclick="ytQuick('funny fails compilation')">Funny Fails</button>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon-label">AI</span>
+                    <h2>Chat with Claude</h2>
                 </div>
-
-                <!-- Results grid -->
-                <div class="yt-video-grid" id="yt-results"></div>
+                <div class="card-body">
+                    <div class="content-text">AI-powered chat using Anthropic's Claude API. Your API key is stored securely.</div>
+                    <button onclick="send('openChat')">Open Chat</button>
+                </div>
             </div>
         </div>
     </div>
@@ -764,44 +599,6 @@ export class DashboardPanel {
             document.getElementById('tab-' + tab).classList.add('active');
             btn.classList.add('active');
         }
-
-        // --- YouTube ---
-        function ytSearch() {
-            const input = document.getElementById('yt-search-input');
-            const query = input.value.trim();
-            if (!query) return;
-            document.getElementById('yt-error').style.display = 'none';
-            document.getElementById('yt-results').innerHTML = '<p style="text-align:center;opacity:0.5">Searching...</p>';
-            vscode.postMessage({ command: 'youtubeSearch', query });
-        }
-
-        function ytQuick(query) {
-            if (query === 'trending') {
-                document.getElementById('yt-error').style.display = 'none';
-                document.getElementById('yt-results').innerHTML = '<p style="text-align:center;opacity:0.5">Loading trending...</p>';
-                vscode.postMessage({ command: 'youtubeTrending' });
-                return;
-            }
-            document.getElementById('yt-search-input').value = query;
-            document.getElementById('yt-error').style.display = 'none';
-            document.getElementById('yt-results').innerHTML = '<p style="text-align:center;opacity:0.5">Searching...</p>';
-            vscode.postMessage({ command: 'youtubeSearch', query });
-        }
-
-        function playVideo(videoId, title) {
-            const wrap = document.getElementById('yt-player-wrap');
-            const player = document.getElementById('yt-player');
-            const label = document.getElementById('yt-now-playing');
-            player.src = 'https://www.youtube-nocookie.com/embed/' + videoId + '?autoplay=1';
-            wrap.style.display = 'block';
-            label.textContent = 'Now Playing: ' + title;
-            label.style.display = 'block';
-            wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        document.getElementById('yt-search-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') ytSearch();
-        });
 
         // --- Messages ---
         window.addEventListener('message', (event) => {
@@ -849,42 +646,6 @@ export class DashboardPanel {
                         btn.onclick = () => checkAnswer(ans, btn);
                         answersEl.appendChild(btn);
                     });
-                    break;
-                }
-
-                case 'youtubeResults': {
-                    const grid = document.getElementById('yt-results');
-                    grid.innerHTML = '';
-                    if (!msg.videos || msg.videos.length === 0) {
-                        grid.innerHTML = '<p style="text-align:center;opacity:0.5">No results found.</p>';
-                        return;
-                    }
-                    msg.videos.forEach((v) => {
-                        const card = document.createElement('div');
-                        card.className = 'yt-video-card';
-                        card.onclick = () => playVideo(v.videoId, v.title);
-                        card.innerHTML =
-                            (v.thumbnail ? '<img src="' + v.thumbnail + '" alt="thumbnail"/>' : '') +
-                            '<div class="yt-video-info">' +
-                            '<h3>' + escapeHtml(v.title) + '</h3>' +
-                            '<span class="channel">' + escapeHtml(v.channelTitle) + '</span>' +
-                            '</div>';
-                        grid.appendChild(card);
-                    });
-                    grid.className = 'yt-video-grid fade-in';
-                    break;
-                }
-
-                case 'youtubeError': {
-                    const errEl = document.getElementById('yt-error');
-                    errEl.textContent = msg.text;
-                    errEl.style.display = 'block';
-                    document.getElementById('yt-results').innerHTML = '';
-                    break;
-                }
-
-                case 'playVideo': {
-                    playVideo(msg.videoId, msg.title);
                     break;
                 }
 

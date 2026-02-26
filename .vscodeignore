@@ -1,8 +1,22 @@
 .vscode/**
 src/**
-node_modules/**
 .claude/**
 .gitignore
 tsconfig.json
+esbuild.mjs
 **/*.ts
 **/*.map
+
+# Don't ship the old tsc output
+out/**
+
+# Exclude ALL node_modules except runtime browser assets
+node_modules/**
+
+# Re-include pdfjs-dist browser files (loaded in webview at runtime)
+!node_modules/pdfjs-dist/build/pdf.mjs
+!node_modules/pdfjs-dist/build/pdf.worker.mjs
+
+# Re-include codicons CSS + font (loaded in webview at runtime)
+!node_modules/@vscode/codicons/dist/codicon.css
+!node_modules/@vscode/codicons/dist/codicon.ttf
